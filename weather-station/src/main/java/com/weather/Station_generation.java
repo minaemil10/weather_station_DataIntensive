@@ -71,8 +71,16 @@ public class Station_generation implements Runnable {
 
                 String jsonString = mapper.writeValueAsString(station1);
                 
-                producer.send(new ProducerRecord<>("weather_station_data", Long.toString(station1.station_id), jsonString));
-                
+                ProducerRecord<String, String> record = new ProducerRecord<>("weather-topic", Long.toString(station1.station_id), jsonString);
+
+                producer.send(record, (metadata, exception) -> {
+                    if (exception != null) {
+                        System.err.println("Failed to send message from station " + station_id + ": " + exception.getMessage());
+                    } else {
+                        System.out.println("Sent message from station " + station_id + " to partition " + metadata.partition() + " at offset " + metadata.offset());
+                    }
+                });
+
                 System.out.println("Station " + station_id + " running on thread " + Thread.currentThread().getName());
                 System.out.println("[Station " + station_id + "] " + jsonString);
 

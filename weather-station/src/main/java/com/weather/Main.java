@@ -13,6 +13,9 @@ public class Main {
         props.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        props.setProperty(ProducerConfig.ACKS_CONFIG, "all");
+        props.setProperty(ProducerConfig.RETRIES_CONFIG, "3");
+        props.setProperty("linger.ms", "5");
 
         // 2. Create the Producer
         KafkaProducer<String, String> producer = new KafkaProducer<>(props);
@@ -25,5 +28,14 @@ public class Main {
         }
         
         System.out.println("Started 10 weather station threads...");
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("Shutting down: flushing and closing Kafka producer...");
+            try {
+                producer.flush();
+                producer.close();
+            } catch (Exception e) {
+                System.err.println("Error while closing producer: " + e.getMessage());
+            }
+        }));
     }
 }
