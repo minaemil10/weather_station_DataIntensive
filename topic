@@ -1,0 +1,6 @@
+/opt/kafka/bin/kafka-topics.sh \
+--create \
+--topic weather-topic \
+--bootstrap-server localhost:9092
+Created topic weather-topic.
+dcd33fa63c57:/$ 
