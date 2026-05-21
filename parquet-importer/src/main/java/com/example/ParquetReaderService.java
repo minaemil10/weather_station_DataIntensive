@@ -1,5 +1,6 @@
 package com.example;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroParquetReader;
@@ -20,7 +21,8 @@ public class ParquetReaderService {
             GenericRecord record;
 
             while ((record = reader.read()) != null) {
-                System.out.println(record);
+                String json = record.toString();
+                ElasticService.sendToElastic(json);
             }
 
             reader.close();

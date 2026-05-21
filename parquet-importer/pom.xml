@@ -7,42 +7,74 @@
   <version>1.0-SNAPSHOT</version>
   <name>parquet-importer</name>
   <url>http://maven.apache.org</url>
+
+  <properties>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
   <dependencies>
+    <!-- JUnit for Testing -->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>3.8.1</version>
-      <scope>test</scope>''
+      <scope>test</scope>
     </dependency>
-    <!-- Apache Parquet -->
+    
+    <!-- Apache Parquet Avro Support -->
     <dependency>
         <groupId>org.apache.parquet</groupId>
         <artifactId>parquet-avro</artifactId>
         <version>1.13.1</version>
     </dependency>
+
+    <!-- Apache Parquet Hadoop Support -->
+    <dependency>
+        <groupId>org.apache.parquet</groupId>
+        <artifactId>parquet-hadoop</artifactId>
+        <version>1.13.1</version>
+    </dependency>
+    
     <!-- Avro -->
     <dependency>
         <groupId>org.apache.avro</groupId>
         <artifactId>avro</artifactId>
         <version>1.11.3</version>
     </dependency>
+    
     <!-- Elasticsearch HTTP -->
     <dependency>
         <groupId>org.apache.httpcomponents.client5</groupId>
         <artifactId>httpclient5</artifactId>
         <version>5.2.1</version>
     </dependency>
-    <!-- JSON -->
+    
+    <!-- Hadoop MapReduce Core -->
     <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-databind</artifactId>
-        <version>2.17.0</version>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-mapreduce-client-core</artifactId>
+      <version>3.3.6</version>
     </dependency>
+
     <!-- Hadoop Common -->
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
       <version>3.3.6</version>
+    </dependency>
+
+    <!-- Unified Jackson Core & Databind -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>2.17.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.17.0</version>
     </dependency>
   </dependencies>
 </project>
