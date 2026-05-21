@@ -22,6 +22,7 @@ public class ParquetReaderService {
 
             while ((record = reader.read()) != null) {
                 String json = record.toString();
+                // System.out.println(json);
                 ElasticService.sendToElastic(json);
             }
 
