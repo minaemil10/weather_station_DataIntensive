@@ -39,3 +39,11 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     restart: on-failure
+  elasticsearch-kibana:
+    image: nshou/elasticsearch-kibana
+    ports:
+      - "9200:9200"
+      - "5601:5601"
+    restart: on-failure
+    environment:
+      ELASTIC_PASSWORD: elastic123
