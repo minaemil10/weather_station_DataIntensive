@@ -17,3 +17,25 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+  weather-station:
+    build:
+      context: ./weather-station
+      dockerfile: Dockerfile
+    container_name: weather-station
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    restart: on-failure
+
+  rain-processor:
+    build:
+      context: ./rain-processor
+      dockerfile: Dockerfile
+    container_name: rain-processor
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    restart: on-failure

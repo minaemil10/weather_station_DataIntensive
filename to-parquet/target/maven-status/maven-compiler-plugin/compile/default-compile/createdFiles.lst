@@ -1,0 +1,4 @@
+com/example/WeatherMessage$WeatherData.class
+com/example/Consumer.class
+com/example/service/ParquetWriterService.class
+com/example/WeatherMessage.class

@@ -23,9 +23,14 @@ public class RainProcessor {
                 "rain-processor-app"
         );
 
+        String bootstrapServers = System.getenv("KAFKA_BOOTSTRAP_SERVERS");
+        if (bootstrapServers == null || bootstrapServers.trim().isEmpty()) {
+            bootstrapServers = "localhost:9092";
+        }
+
         props.put(
                 StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
-                "localhost:9092"
+                bootstrapServers
         );
 
         props.put(
