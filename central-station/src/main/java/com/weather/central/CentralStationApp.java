@@ -28,7 +28,14 @@ public class CentralStationApp {
             compactorThread.start();
             System.out.println("[Cleaner] Background Compactor started.");
 
-            // 3. Setup the HTTP Server
+            // 3. Start the Kafka Consumer Service
+            KafkaConsumerService kafkaService = new KafkaConsumerService(storageEngine);
+            Thread kafkaThread = new Thread(kafkaService);
+            kafkaThread.setDaemon(true);
+            kafkaThread.start();
+            System.out.println("[Kafka] Consumer started.");
+
+            // 4. Setup the HTTP Server
             HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
             
             // Endpoint for single station: /weather?stationId=X
