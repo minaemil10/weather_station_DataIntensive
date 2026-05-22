@@ -7,3 +7,9 @@ minikube-linux-amd64target/
 .idea/
 .vscode/
 *.jfr
+target/
+*.class
+*.log
+.idea/
+.vscode/
+*.jfr
