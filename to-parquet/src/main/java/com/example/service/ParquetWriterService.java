@@ -33,8 +33,9 @@ public class ParquetWriterService {
 
     public void writeParquetFile(List<WeatherMessage> records) throws IOException {
         Schema schema = new Schema.Parser().parse(SCHEMA_JSON);
-        String fileName = "data/weather-data-" + (++fileCounter) + ".parquet";
-        new java.io.File("data").mkdirs();
+    String outputDir = System.getenv("OUTPUT_DIR") != null ? System.getenv("OUTPUT_DIR") : "data";
+    new java.io.File(outputDir).mkdirs();
+    String fileName = outputDir + "/weather-data-" + (++fileCounter) + ".parquet";
         ParquetWriter<GenericRecord> writer = AvroParquetWriter
                 .<GenericRecord>builder(new Path(fileName))
                 .withSchema(schema)
