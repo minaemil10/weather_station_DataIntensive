@@ -4,3 +4,4 @@
 minikube-linux-amd64target/
 *.jar
 *.class
+target/
