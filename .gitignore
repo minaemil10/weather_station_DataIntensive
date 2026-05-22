@@ -1,7 +1,13 @@
-**/target/
-*.class
-*.jar
-minikube-linux-amd64target/
-*.jar
-*.class
+cat >> .gitignore << 'EOF'
 target/
+*.class
+*.log
+.idea/
+.vscode/
+*.jfr
+EOFtarget/
+*.class
+*.log
+.idea/
+.vscode/
+*.jfr
