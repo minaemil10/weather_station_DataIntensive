@@ -1,0 +1,91 @@
+# Docker Compose configuration for Central Station with Kubernetes-friendly setup
+# This defines the central-station service with Kafka and Zookeeper so it can run standalone.
+# To use: docker-compose -f docker-compose.yml -f docker-compose.central-station.yml up
+
+version: '3.8'
+
+services:
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: 'yes'
+      ZOOKEEPER_CLIENT_PORT: '2181'
+    ports:
+      - '2181:2181'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:2181/']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - weather
+    restart: unless-stopped
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: '1'
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      ALLOW_PLAINTEXT_LISTENER: 'yes'
+    ports:
+      - '9092:9092'
+    healthcheck:
+      test: ['CMD', 'bash', '-lc', 'echo > /dev/tcp/localhost/9092']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - weather
+    restart: unless-stopped
+
+  central-station:
+    build:
+      context: ./central-station
+      dockerfile: Dockerfile
+    container_name: central-station
+    ports:
+      - '8080:8080'
+    environment:
+      DATA_DIR: /data/bitcask
+      KAFKA_BROKERS: kafka:9092
+      SERVER_PORT: 8080
+      JAVA_OPTS: '-XX:+UseG1GC -Xmx512m -Xms256m'
+    volumes:
+      - central-station-data:/data/bitcask
+    depends_on:
+      zookeeper:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8080/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - weather
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+volumes:
+  central-station-data:
+    driver: local
+
+networks:
+  weather:
+    name: weather

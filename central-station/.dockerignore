@@ -1,0 +1,27 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Build outputs
+target/
+/target/
+*.jar
+*.war
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Maven
+.m2/
+dependency-reduced-pom.xml
+
+# Kubernetes
+*.yaml
+kubernetes-deployment.yaml
