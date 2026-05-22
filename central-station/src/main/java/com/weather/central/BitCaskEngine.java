@@ -8,21 +8,33 @@ import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class BitCaskEngine {
-    private static final String DATA_DIR_PATH = "central-station/data/active/";
+    private static final String DEFAULT_DATA_DIR = "/data/bitcask";
+    private final String dataDir;
     private RandomAccessFile activeLogWriter;
     private final ConcurrentHashMap<String, IndexEntry> keyDir = new ConcurrentHashMap<>();
     private File activeFile;
     private String fileName;
     private int maxFileSize = 1024*10;
     
+    /**
+     * Constructor that uses default data directory (/data/bitcask)
+     */
     public BitCaskEngine() throws IOException {
-        File dir = new File(DATA_DIR_PATH);
+        this(DEFAULT_DATA_DIR);
+    }
+    
+    /**
+     * Constructor that accepts custom data directory for flexibility
+     */
+    public BitCaskEngine(String customDataDir) throws IOException {
+        this.dataDir = customDataDir;
+        File dir = new File(dataDir + "/active");
         if (!dir.exists()) {
             dir.mkdirs();
         }
 
         // 1. Scan hint files first (fast — no value data, just index info)
-        File archiveDir = new File("central-station/data/archive/");
+        File archiveDir = new File(dataDir + "/archive");
         if (archiveDir.exists()) {
             File[] hintFiles = archiveDir.listFiles((d, name) -> name.endsWith(".hint"));
             if (hintFiles != null) {
@@ -160,7 +172,7 @@ public class BitCaskEngine {
             activeLogWriter.close();
             int nextFileNumber = Integer.parseInt(fileName.substring(0, 4)) + 1;
             String nextFileName = String.format("%04d.data", nextFileNumber);
-            activeFile = new File(DATA_DIR_PATH, nextFileName);
+            activeFile = new File(dataDir + "/active", nextFileName);
             activeLogWriter = new RandomAccessFile(activeFile, "rw");
             activeLogWriter.seek(activeLogWriter.length());
             fileName = nextFileName;

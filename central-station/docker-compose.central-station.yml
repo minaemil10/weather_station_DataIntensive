@@ -1,0 +1,52 @@
+# Docker Compose configuration for Central Station with Kubernetes-friendly setup
+# This defines the central-station service with persistent volume and environment configuration
+# To use: docker-compose -f docker-compose.yml -f docker-compose.central-station.yml up
+
+version: '3.8'
+
+services:
+  central-station:
+    build:
+      context: ./central-station
+      dockerfile: Dockerfile
+    container_name: central-station
+    ports:
+      - "8080:8080"
+    environment:
+      # Use Kubernetes-friendly config
+      DATA_DIR: /data/bitcask
+      KAFKA_BROKERS: kafka:9092
+      SERVER_PORT: 8080
+      JAVA_OPTS: "-XX:+UseG1GC -Xmx512m -Xms256m"
+    volumes:
+      # Persistent volume for BitCask data
+      - central-station-data:/data/bitcask
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - weather
+    restart: unless-stopped
+    # Resource limits (similar to Kubernetes)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+volumes:
+  central-station-data:
+    driver: local
+
+networks:
+  weather:
+    external: true
