@@ -1,6 +1,8 @@
 package com.example.service;
 
-import com.example.WeatherMessage;
+import java.io.IOException;
+import java.util.List;
+
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -8,8 +10,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
-import java.io.IOException;
-import java.util.List;
+
+import com.example.WeatherMessage;
 
 public class ParquetWriterService {
     private int fileCounter = 0;
