@@ -1,15 +1,15 @@
 package com.weather.central;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
 
 public class CentralStationApp {
     private static volatile boolean running = true;
@@ -47,7 +47,7 @@ public class CentralStationApp {
             System.out.println("[Storage] BitCask Engine ready.");
 
             // 2. Start the Compactor in a regular (non-daemon) thread
-            Compactor compactor = new Compactor(storageEngine);
+            Compactor compactor = new Compactor(storageEngine, dataDir);
             Thread compactorThread = new Thread(compactor, "Compactor");
             compactorThread.start();
             System.out.println("[Cleaner] Background Compactor started.");

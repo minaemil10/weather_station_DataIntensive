@@ -20,17 +20,7 @@ spec:
           args:
             - |
               mkdir -p /config
-              cat > /config/kafka.properties << EOF
-broker.id=1
-listeners=PLAINTEXT://0.0.0.0:9092
-advertised.listeners=PLAINTEXT://kafka.weather-system.svc.cluster.local:9092
-listener.security.protocol.map=PLAINTEXT:PLAINTEXT
-inter.broker.listener.name=PLAINTEXT
-zookeeper.connect=zookeeper:2181
-log.dirs=/var/lib/kafka/data
-offsets.topic.replication.factor=1
-auto.create.topics.enable=true
-EOF
+              printf 'broker.id=1\nlisteners=PLAINTEXT://0.0.0.0:9092\nadvertised.listeners=PLAINTEXT://kafka:9092\nlistener.security.protocol.map=PLAINTEXT:PLAINTEXT\ninter.broker.listener.name=PLAINTEXT\nzookeeper.connect=zookeeper:2181\nlog.dirs=/var/lib/kafka/data\noffsets.topic.replication.factor=1\nauto.create.topics.enable=true\n' > /config/kafka.properties
           volumeMounts:
             - name: kafka-config
               mountPath: /config

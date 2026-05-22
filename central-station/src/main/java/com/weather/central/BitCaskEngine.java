@@ -1,10 +1,14 @@
 package com.weather.central;
 
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class BitCaskEngine {
@@ -61,6 +65,7 @@ public class BitCaskEngine {
         this.activeLogWriter.seek(this.activeLogWriter.length());
     }
     private void scanFile(File file) throws IOException {
+        if (file.length() == 0) return;
         try (RandomAccessFile scanner = new RandomAccessFile(file, "r")) {
             long fileLength = scanner.length();
             while (scanner.getFilePointer() < fileLength) {
@@ -107,33 +112,45 @@ public class BitCaskEngine {
             }
         }
     }
-
-    public synchronized void put(String key, String value) {
-        try {
-            byte[] keyBytes = key.getBytes();
-            byte[] valueBytes = value.getBytes();
-            long offset = activeLogWriter.getFilePointer();
-            long timestamp = System.currentTimeMillis();
-            int key_size = keyBytes.length;
-            int value_size = valueBytes.length;
-
-            activeLogWriter.writeLong(timestamp);
-            activeLogWriter.writeInt(key_size);
-            activeLogWriter.writeInt(value_size);
-            activeLogWriter.write(keyBytes);
-            activeLogWriter.write(valueBytes);
-            long valueOffset = offset + 8 + 4 + 4 + key_size;
-            IndexEntry entry = new IndexEntry(activeFile.getName(), valueOffset, value_size, timestamp);
-            keyDir.put(key, entry);
-
-            if (activeLogWriter.getFilePointer() >= maxFileSize) {
-                rotate();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+public synchronized void put(String key, String value) {
+    try {
+        // Reopen writer if closed unexpectedly
+        if (activeLogWriter.getFilePointer() < 0) {
+            activeLogWriter = new RandomAccessFile(activeFile, "rw");
+            activeLogWriter.seek(activeLogWriter.length());
         }
+        byte[] keyBytes = key.getBytes();
+        byte[] valueBytes = value.getBytes();
+        long offset = activeLogWriter.getFilePointer();
+        long timestamp = System.currentTimeMillis();
+        int key_size = keyBytes.length;
+        int value_size = valueBytes.length;
 
+        activeLogWriter.writeLong(timestamp);
+        activeLogWriter.writeInt(key_size);
+        activeLogWriter.writeInt(value_size);
+        activeLogWriter.write(keyBytes);
+        activeLogWriter.write(valueBytes);
+        long valueOffset = offset + 8 + 4 + 4 + key_size;
+        IndexEntry entry = new IndexEntry(activeFile.getName(), valueOffset, value_size, timestamp);
+        keyDir.put(key, entry);
+
+        if (activeLogWriter.getFilePointer() >= maxFileSize) {
+            rotate();
+        }
+    } catch (IOException e) {
+        try {
+            // Writer was closed — reopen and retry once
+            activeLogWriter = new RandomAccessFile(activeFile, "rw");
+            activeLogWriter.seek(activeLogWriter.length());
+            put(key, value);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
     }
+}
     
     public String get(String key) {
         IndexEntry entry = keyDir.get(key);
@@ -142,11 +159,11 @@ public class BitCaskEngine {
         }
 
         String filePath;
-        if (entry.fileName.startsWith("merge_")) {
-            filePath = "central-station/data/archive/" + entry.fileName;
-        } else {
-            filePath = "central-station/data/active/" + entry.fileName;
-        }
+    if (entry.fileName.startsWith("merge_")) {
+        filePath = dataDir + "/archive/" + entry.fileName;
+    } else {
+        filePath = dataDir + "/active/" + entry.fileName;
+    }
 
         try (RandomAccessFile reader = new RandomAccessFile(filePath, "r")) {
             reader.seek(entry.offset);

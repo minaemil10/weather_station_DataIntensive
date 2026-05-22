@@ -4,7 +4,6 @@ metadata:
   name: weather-station
   namespace: weather-system
 spec:
-  # Spools up the 10 required instances
   replicas: 10
   selector:
     matchLabels:
@@ -20,8 +19,7 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: KAFKA_BOOTSTRAP_SERVERS
-              # THE CRITICAL FIX: Using the FQDN to ensure DNS resolves
-              value:  "kafka:9092"
+              value: "kafka.weather-system.svc.cluster.local:9092"
           resources:
             requests:
               memory: "256Mi"

@@ -35,7 +35,7 @@ public class ParquetWriterService {
         Schema schema = new Schema.Parser().parse(SCHEMA_JSON);
     String outputDir = System.getenv("OUTPUT_DIR") != null ? System.getenv("OUTPUT_DIR") : "data";
     new java.io.File(outputDir).mkdirs();
-    String fileName = outputDir + "/weather-data-" + (++fileCounter) + ".parquet";
+   String fileName = outputDir + "/weather-data-" + System.currentTimeMillis() + ".parquet";
         ParquetWriter<GenericRecord> writer = AvroParquetWriter
                 .<GenericRecord>builder(new Path(fileName))
                 .withSchema(schema)

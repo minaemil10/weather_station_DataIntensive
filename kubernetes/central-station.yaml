@@ -37,32 +37,35 @@ spec:
       labels:
         app: central-server
     spec:
+      initContainers:
+        - name: wait-for-kafka
+          image: busybox
+          command: ['sh', '-c', 'until nc -z kafka.weather-system.svc.cluster.local 9092; do echo waiting for kafka; sleep 3; done']
       containers:
-
-        # Container 1: Parquet Writer
         - name: consumer
           image: to-parquet:1.0
           imagePullPolicy: IfNotPresent
           env:
             - name: KAFKA_BOOTSTRAP_SERVERS
-              value: kafka:9092
+              value: "kafka.weather-system.svc.cluster.local:9092"
+            - name: OUTPUT_DIR
+              value: "/data/pq"
           volumeMounts:
             - name: storage
-              mountPath: /data/parquet
-
-        # Container 2: BitCask / Central Station
+              mountPath: /data/pq
         - name: bitcask
           image: central-station:1.0
           imagePullPolicy: IfNotPresent
           env:
             - name: KAFKA_BOOTSTRAP_SERVERS
-              value: kafka:9092
+              value: "kafka.weather-system.svc.cluster.local:9092"
+            - name: KAFKA_BROKERS
+              value: "kafka.weather-system.svc.cluster.local:9092"
             - name: DATA_DIR
-              value: "/data/bitcask"
+              value: "/data/bc"
           volumeMounts:
             - name: storage
-              mountPath: /data/bitcask
-
+              mountPath: /data/bc
       volumes:
         - name: storage
           persistentVolumeClaim:
