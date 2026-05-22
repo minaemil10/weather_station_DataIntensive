@@ -1,6 +1,8 @@
 package com.example.service;
 
-import com.example.WeatherMessage;
+import java.io.IOException;
+import java.util.List;
+
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -8,8 +10,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
-import java.io.IOException;
-import java.util.List;
+
+import com.example.WeatherMessage;
 
 public class ParquetWriterService {
     private int fileCounter = 0;
@@ -31,8 +33,9 @@ public class ParquetWriterService {
 
     public void writeParquetFile(List<WeatherMessage> records) throws IOException {
         Schema schema = new Schema.Parser().parse(SCHEMA_JSON);
-        String fileName = "data/weather-data-" + (++fileCounter) + ".parquet";
-        new java.io.File("data").mkdirs();
+    String outputDir = System.getenv("OUTPUT_DIR") != null ? System.getenv("OUTPUT_DIR") : "data";
+    new java.io.File(outputDir).mkdirs();
+   String fileName = outputDir + "/weather-data-" + System.currentTimeMillis() + ".parquet";
         ParquetWriter<GenericRecord> writer = AvroParquetWriter
                 .<GenericRecord>builder(new Path(fileName))
                 .withSchema(schema)

@@ -1,9 +1,5 @@
 package com.weather.central;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -11,32 +7,59 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
+
 public class CentralStationApp {
+    private static volatile boolean running = true;
 
     public static void main(String[] args) {
         try {
             System.out.println("--- Starting Weather Central Station ---");
 
+            // Read configuration from environment variables
+            String dataDir = System.getenv("DATA_DIR");
+            if (dataDir == null || dataDir.isEmpty()) {
+                dataDir = "/data/bitcask";
+            }
+            System.out.println("[Config] Data directory: " + dataDir);
+
+            String kafkaBrokers = System.getenv("KAFKA_BROKERS");
+            if (kafkaBrokers == null || kafkaBrokers.isEmpty()) {
+                kafkaBrokers = "localhost:9092";
+            }
+            System.out.println("[Config] Kafka brokers: " + kafkaBrokers);
+
+            int port = 8080;
+            String portEnv = System.getenv("SERVER_PORT");
+            if (portEnv != null && !portEnv.isEmpty()) {
+                try {
+                    port = Integer.parseInt(portEnv);
+                } catch (NumberFormatException e) {
+                    System.out.println("[Config] Invalid SERVER_PORT, using default 8080");
+                }
+            }
+            System.out.println("[Config] Server port: " + port);
+
             // 1. Initialize the Storage Engine
-            BitCaskEngine storageEngine = new BitCaskEngine();
+            BitCaskEngine storageEngine = new BitCaskEngine(dataDir);
             System.out.println("[Storage] BitCask Engine ready.");
 
-            // 2. Start the Compactor in a background thread
-            Compactor compactor = new Compactor(storageEngine);
-            Thread compactorThread = new Thread(compactor);
-            compactorThread.setDaemon(true);
+            // 2. Start the Compactor in a regular (non-daemon) thread
+            Compactor compactor = new Compactor(storageEngine, dataDir);
+            Thread compactorThread = new Thread(compactor, "Compactor");
             compactorThread.start();
             System.out.println("[Cleaner] Background Compactor started.");
 
             // 3. Start the Kafka Consumer Service
-            KafkaConsumerService kafkaService = new KafkaConsumerService(storageEngine);
-            Thread kafkaThread = new Thread(kafkaService);
-            kafkaThread.setDaemon(true);
+            KafkaConsumerService kafkaService = new KafkaConsumerService(storageEngine, kafkaBrokers);
+            Thread kafkaThread = new Thread(kafkaService, "KafkaConsumer");
             kafkaThread.start();
             System.out.println("[Kafka] Consumer started.");
 
             // 4. Setup the HTTP Server
-            HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+            HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
             
             // Endpoint for single station: /weather?stationId=X
             server.createContext("/weather", new WeatherHandler(storageEngine));
@@ -44,15 +67,43 @@ public class CentralStationApp {
             // Endpoint for all stations: /weather/all
             server.createContext("/weather/all", new AllWeatherHandler(storageEngine));
             
+            // Health check endpoint for Kubernetes
+            server.createContext("/health", new HealthCheckHandler());
+            
             server.setExecutor(null);
             server.start();
 
-            System.out.println("[API] Server listening on http://localhost:8080");
+            System.out.println("[API] Server listening on http://0.0.0.0:" + port);
             System.out.println("--- Central Station is Online ---");
+
+            // Graceful shutdown handling
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                System.out.println("[Shutdown] Initiating graceful shutdown...");
+                running = false;
+                server.stop(5);
+                kafkaThread.interrupt();
+                compactorThread.interrupt();
+                System.out.println("[Shutdown] Central Station stopped.");
+            }));
 
         } catch (IOException e) {
             System.err.println("Critical Error: " + e.getMessage());
             e.printStackTrace();
+            System.exit(1);
+        }
+    }
+
+    /**
+     * Health check endpoint for Kubernetes liveness/readiness probes
+     */
+    static class HealthCheckHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (running) {
+                sendResponse(exchange, "{\"status\":\"healthy\"}", 200);
+            } else {
+                sendResponse(exchange, "{\"status\":\"shutting down\"}", 503);
+            }
         }
     }
 

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+  namespace: weather-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      initContainers:
+        - name: kafka-init
+          image: confluentinc/cp-kafka:7.5.0
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              mkdir -p /config
+              printf 'broker.id=1\nlisteners=PLAINTEXT://0.0.0.0:9092\nadvertised.listeners=PLAINTEXT://kafka:9092\nlistener.security.protocol.map=PLAINTEXT:PLAINTEXT\ninter.broker.listener.name=PLAINTEXT\nzookeeper.connect=zookeeper:2181\nlog.dirs=/var/lib/kafka/data\noffsets.topic.replication.factor=1\nauto.create.topics.enable=true\n' > /config/kafka.properties
+          volumeMounts:
+            - name: kafka-config
+              mountPath: /config
+      containers:
+        - name: kafka
+          image: confluentinc/cp-kafka:7.5.0
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              mkdir -p /etc/kafka
+              cp /config/kafka.properties /etc/kafka/kafka.properties
+              kafka-server-start /etc/kafka/kafka.properties
+          ports:
+            - containerPort: 9092
+          env:
+            - name: KAFKA_HEAP_OPTS
+              value: "-Xmx512M -Xms256M"
+          volumeMounts:
+            - name: kafka-config
+              mountPath: /config
+      volumes:
+        - name: kafka-config
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: weather-system
+spec:
+  selector:
+    app: kafka
+  ports:
+    - port: 9092
+      targetPort: 9092

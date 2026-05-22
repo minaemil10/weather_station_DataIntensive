@@ -1,0 +1,162 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: central-station-config
+  namespace: weather-system
+data:
+  KAFKA_BROKERS: "kafka-0.kafka-headless:9092,kafka-1.kafka-headless:9092,kafka-2.kafka-headless:9092"
+  SERVER_PORT: "8080"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: central-station-data
+  namespace: weather-system
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: central-station
+  namespace: weather-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: central-station
+  template:
+    metadata:
+      labels:
+        app: central-station
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: central-station
+        image: weather-system/central-station:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        
+        # Environment variables from ConfigMap
+        envFrom:
+        - configMapRef:
+            name: central-station-config
+        
+        # Override DATA_DIR to use mounted volume
+        env:
+        - name: DATA_DIR
+          value: /data/bitcask
+        - name: JAVA_OPTS
+          value: "-XX:+UseG1GC -XX:+UnlockExperimentalVMOptions -Xmx512m -Xms256m"
+        
+        # Resource requests and limits
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        
+        # Liveness probe - restart if unhealthy
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Readiness probe - remove from service if not ready
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        
+        # Startup probe - give time for app to start
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 30
+        
+        # Graceful shutdown
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+        
+        # Persistent volume mount
+        volumeMounts:
+        - name: bitcask-storage
+          mountPath: /data/bitcask
+        - name: tmp
+          mountPath: /tmp
+      
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      
+      # Volumes
+      volumes:
+      - name: bitcask-storage
+        persistentVolumeClaim:
+          claimName: central-station-data
+      - name: tmp
+        emptyDir: {}
+      
+      # Pod disruption budget for high availability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - central-station
+              topologyKey: kubernetes.io/hostname
+      
+      terminationGracePeriodSeconds: 30
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: central-station
+  namespace: weather-system
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: central-station
