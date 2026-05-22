@@ -1,4 +1,9 @@
 **/target/
 *.class
 *.jar
-minikube-linux-amd64
+minikube-linux-amd64target/
+*.class
+*.log
+.idea/
+.vscode/
+*.jfr
