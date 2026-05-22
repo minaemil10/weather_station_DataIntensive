@@ -46,9 +46,7 @@ services:
     restart: unless-stopped
 
   central-station:
-    build:
-      context: ./central-station
-      dockerfile: Dockerfile
+    image: central-station:1.0
     container_name: central-station
     ports:
       - '8080:8080'

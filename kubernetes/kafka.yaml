@@ -13,25 +13,56 @@ spec:
       labels:
         app: kafka
     spec:
+      initContainers:
+        - name: kafka-init
+          image: confluentinc/cp-kafka:7.5.0
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              mkdir -p /config
+              cat > /config/kafka.properties << EOF
+broker.id=1
+listeners=PLAINTEXT://0.0.0.0:9092
+advertised.listeners=PLAINTEXT://kafka.weather-system.svc.cluster.local:9092
+listener.security.protocol.map=PLAINTEXT:PLAINTEXT
+inter.broker.listener.name=PLAINTEXT
+zookeeper.connect=zookeeper:2181
+log.dirs=/var/lib/kafka/data
+offsets.topic.replication.factor=1
+auto.create.topics.enable=true
+EOF
+          volumeMounts:
+            - name: kafka-config
+              mountPath: /config
       containers:
         - name: kafka
           image: confluentinc/cp-kafka:7.5.0
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              mkdir -p /etc/kafka
+              cp /config/kafka.properties /etc/kafka/kafka.properties
+              kafka-server-start /etc/kafka/kafka.properties
           ports:
             - containerPort: 9092
           env:
-            - name: KAFKA_BROKER_ID
-              value: "1"
-            - name: KAFKA_ZOOKEEPER_CONNECT
-              value: "zookeeper:2181"
-            - name: KAFKA_LISTENERS
-              value: "PLAINTEXT://0.0.0.0:9092"
-            - name: KAFKA_ADVERTISED_LISTENERS
-              value: "PLAINTEXT://kafka.weather-system.svc.cluster.local:9092"
-            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
-              value: "PLAINTEXT:PLAINTEXT"
-            - name: KAFKA_INTER_BROKER_LISTENER_NAME
-              value: "PLAINTEXT"
-            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
-              value: "1"
-
-              
+            - name: KAFKA_HEAP_OPTS
+              value: "-Xmx512M -Xms256M"
+          volumeMounts:
+            - name: kafka-config
+              mountPath: /config
+      volumes:
+        - name: kafka-config
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: weather-system
+spec:
+  selector:
+    app: kafka
+  ports:
+    - port: 9092
+      targetPort: 9092
