@@ -5,6 +5,7 @@
   <artifactId>to-parquet</artifactId>
   <version>1.0-SNAPSHOT</version>
   <build>
+    <finalName>app</finalName>
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -36,8 +37,6 @@
     </plugins>
   </build>
   <properties>
-    <maven.compiler.target>21</maven.compiler.target>
-    <maven.compiler.source>21</maven.compiler.source>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>17</maven.compiler.release>
   </properties>
 </project>

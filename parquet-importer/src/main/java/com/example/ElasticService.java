@@ -1,5 +1,11 @@
 package com.example;
 
+import java.nio.charset.StandardCharsets;
+import java.security.cert.X509Certificate;
+import java.util.Base64;
+
+import javax.net.ssl.SSLContext;
+
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -10,13 +16,6 @@ import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.ssl.SSLContexts;
 import org.apache.hc.core5.ssl.TrustStrategy;
-
-import javax.net.ssl.SSLContext;
-import java.security.cert.X509Certificate;
-
-// Crucial new imports for handling credentials safely
-import java.util.Base64;
-import java.nio.charset.StandardCharsets;
 
 public class ElasticService {
 
@@ -45,7 +44,7 @@ public class ElasticService {
                     .build();
 
             HttpPost request =
-                    new HttpPost("https://localhost:9200/weather-data/_doc");
+                    new HttpPost("https://:localhost9200/weather-data/_doc");
 
             // --- ADD THIS AUTHENTICATION BLOCK HERE ---
             String auth = "elastic:f1zJSg_BvxcOdcoWxJKc";

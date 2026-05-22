@@ -1,45 +1,69 @@
 package com.weather;
 
+import java.util.Properties;
+
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
-import java.util.Properties;
 
 public class Main {
+
     public static void main(String[] args) {
 
-        // 1. Set up Kafka Producer Properties
-        Properties props = new Properties();
-        String bootstrapServers = System.getenv("KAFKA_BOOTSTRAP_SERVERS");
-        if (bootstrapServers == null || bootstrapServers.trim().isEmpty()) {
-            bootstrapServers = "localhost:9092";
-        }
-        props.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.setProperty(ProducerConfig.ACKS_CONFIG, "all");
-        props.setProperty(ProducerConfig.RETRIES_CONFIG, "3");
-        props.setProperty("linger.ms", "5");
+        String podName = System.getenv("HOSTNAME");
 
-        // 2. Create the Producer
-        KafkaProducer<String, String> producer = new KafkaProducer<>(props);
+        int stationId = 0;
 
-        // 3. Start 10 Weather Station Threads
-        for (int i = 1; i <= 10; i++) {
-            Station_generation station = new Station_generation(i, producer);
-            Thread thread = new Thread(station);
-            thread.start();
-        }
-        
-        System.out.println("Started 10 weather station threads...");
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("Shutting down: flushing and closing Kafka producer...");
-            try {
-                producer.flush();
-                producer.close();
-            } catch (Exception e) {
-                System.err.println("Error while closing producer: " + e.getMessage());
+        try {
+            if (podName != null) {
+                stationId = Math.abs(podName.hashCode());
             }
-        }));
+        } catch (Exception e) {
+            System.out.println("Could not generate station ID, defaulting to 0");
+        }
+
+ String bootstrapServers = System.getenv("KAFKA_BOOTSTRAP_SERVERS");
+
+System.out.println("RAW ENV KAFKA_BOOTSTRAP_SERVERS = " + bootstrapServers);
+
+// FORCE VALID VALUE ALWAYS
+if (bootstrapServers == null || bootstrapServers.trim().isEmpty()) {
+    bootstrapServers = "kafka:9092";
+}
+
+System.out.println("FINAL bootstrap servers = " + bootstrapServers);
+
+        System.out.println("Using Kafka bootstrap servers: " + bootstrapServers);
+
+        Properties props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+        KafkaProducer<String, String> producer = null;
+
+        try {
+            // Give K8s network DNS 3 seconds to settle before connecting
+            Thread.sleep(3000);
+            
+            // Try to initialize the producer
+            producer = new KafkaProducer<>(props);
+            System.out.println("Kafka Producer connected successfully!");
+
+        } catch (Exception e) {
+            // This catches BOTH the InterruptedException from Thread.sleep 
+            // AND any Kafka connection errors!
+            System.err.println("CRITICAL ERROR: Failed to start Kafka Producer!");
+            e.printStackTrace();
+            
+            // Force the app to exit with an error code so Kubernetes knows to restart it
+            System.exit(1); 
+        }
+
+        // Only run the station if the producer successfully connected
+        if (producer != null) {
+            Station_generation station = new Station_generation(stationId, producer);
+            station.run();
+        }
     }
 }
